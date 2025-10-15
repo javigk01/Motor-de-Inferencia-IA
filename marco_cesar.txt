@@ -1,0 +1,8 @@
+# Base de conocimientos - Ejemplo Marco/César
+Hombre(Marco)
+Pompeyano(Marco)
+¬Pompeyano(x) ∨ Romano(x)
+Gobernante(Cesar)
+¬Romano(x) ∨ Leal(x,Cesar) ∨ Odia(x,Cesar)
+¬Hombre(x) ∨ ¬Gobernante(y) ∨ ¬IntentaAsesinar(x,y) ∨ ¬Leal(x,y)
+IntentaAsesinar(Marco,Cesar)

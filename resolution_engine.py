@@ -216,20 +216,113 @@ def refutacion_cadena(base_clausulas: List[List[str]], meta: str, verbose: bool=
                 print("⇒ No se pudo continuar la cadena desde la negación de la meta.")
             return False
 
-# ---------- ejemplo (la misma base de la imagen, con cláusula 6 ya corregida) ----------
-if __name__ == "__main__":
-    base = [
-        ["Hombre(Marco)"],
-        ["Pompeyano(Marco)"],
-        ["¬Pompeyano(x)", "Romano(x)"],
-        ["Gobernante(Cesar)"],
-        ["¬Romano(x)", "Leal(x,Cesar)", "Odia(x,Cesar)"],
-        # cláusula 6 corregida con ¬Leal(x,y) como literal negativo
-        ["¬Hombre(x)", "¬Gobernante(y)", "¬IntentaAsesinar(x,y)", "¬Leal(x,y)"],
-        ["IntentaAsesinar(Marco,Cesar)"]
-    ]
+# ---------- funciones para leer desde archivos ----------
+def leer_base_conocimientos(archivo: str) -> List[List[str]]:
+    """
+    Lee la base de conocimientos desde un archivo de texto.
+    Formato esperado:
+    - Una cláusula por línea
+    - Literales separados por '∨' o 'v' o '|'
+    - Líneas vacías o que empiecen con '#' se ignoran
+    """
+    base = []
+    try:
+        with open(archivo, 'r', encoding='utf-8') as f:
+            for linea in f:
+                linea = linea.strip()
+                # Ignorar líneas vacías o comentarios
+                if not linea or linea.startswith('#'):
+                    continue
+                
+                # Separar literales por ∨, v, o |
+                literales = re.split(r'[∨v|]', linea)
+                clausula = [lit.strip() for lit in literales if lit.strip()]
+                if clausula:
+                    base.append(clausula)
+    except FileNotFoundError:
+        print(f"❌ Error: No se encontró el archivo {archivo}")
+        return []
+    except Exception as e:
+        print(f"❌ Error al leer el archivo {archivo}: {e}")
+        return []
+    
+    return base
 
-    meta = "Odia(Marco,Cesar)"
+def leer_meta(archivo: str) -> str:
+    """
+    Lee la meta desde un archivo de texto.
+    El archivo debe contener solo la meta en una línea.
+    """
+    try:
+        with open(archivo, 'r', encoding='utf-8') as f:
+            meta = f.read().strip()
+            return meta
+    except FileNotFoundError:
+        print(f"❌ Error: No se encontró el archivo {archivo}")
+        return ""
+    except Exception as e:
+        print(f"❌ Error al leer el archivo {archivo}: {e}")
+        return ""
+
+def crear_archivo_ejemplo():
+    """Crea archivos de ejemplo para demostrar el uso"""
+    # Crear archivo de base de conocimientos
+    base_contenido = """# Base de conocimientos - Ejemplo Marco/César
+# Una cláusula por línea, literales separados por ∨
+
+Hombre(Marco)
+Pompeyano(Marco)
+¬Pompeyano(x) ∨ Romano(x)
+Gobernante(Cesar)
+¬Romano(x) ∨ Leal(x,Cesar) ∨ Odia(x,Cesar)
+¬Hombre(x) ∨ ¬Gobernante(y) ∨ ¬IntentaAsesinar(x,y) ∨ ¬Leal(x,y)
+IntentaAsesinar(Marco,Cesar)"""
+    
+    with open('base_conocimientos.txt', 'w', encoding='utf-8') as f:
+        f.write(base_contenido)
+    
+    # Crear archivo de meta
+    with open('meta.txt', 'w', encoding='utf-8') as f:
+        f.write('Odia(Marco,Cesar)')
+    
+    print("✅ Archivos de ejemplo creados:")
+    print("   - base_conocimientos.txt")
+    print("   - meta.txt")
+
+# ---------- ejemplo desde archivos ----------
+if __name__ == "__main__":
+    import sys
+    
+    # Si se pasan argumentos, usar archivos específicos
+    if len(sys.argv) >= 3:
+        archivo_base = sys.argv[1]
+        archivo_meta = sys.argv[2]
+    else:
+        # Usar archivos por defecto y crearlos si no existen
+        archivo_base = 'base_conocimientos.txt'
+        archivo_meta = 'meta.txt'
+        
+        # Verificar si existen, si no, crearlos
+        import os
+        if not os.path.exists(archivo_base) or not os.path.exists(archivo_meta):
+            print("📝 Creando archivos de ejemplo...")
+            crear_archivo_ejemplo()
+            print()
+    
+    print(f"📁 Leyendo base de conocimientos desde: {archivo_base}")
+    base = leer_base_conocimientos(archivo_base)
+    
+    print(f"🎯 Leyendo meta desde: {archivo_meta}")
+    meta = leer_meta(archivo_meta)
+    
+    if not base or not meta:
+        print("❌ Error: No se pudo leer la base de conocimientos o la meta")
+        sys.exit(1)
+    
+    print(f"\n📚 Base de conocimientos cargada ({len(base)} cláusulas)")
+    print(f"🎯 Meta a demostrar: {meta}")
+    print("\n" + "="*60)
+    
     resultado = refutacion_cadena(base, meta, verbose=True)
-    print("\n---------------------------------------------------------------")
-    print("Resultado final:", "SE PUEDE DEMOSTRAR" if resultado else "NO SE PUEDE DEMOSTRAR")
+    print("\n" + "="*60)
+    print("🏆 Resultado final:", "✅ SE PUEDE DEMOSTRAR" if resultado else "❌ NO SE PUEDE DEMOSTRAR")

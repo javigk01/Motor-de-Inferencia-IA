@@ -1,0 +1,7 @@
+# Base de conocimientos - Ejemplo Curiosidad mato gato
+¬Animal(y) ∨ ¬Ama(x, y) ∨ Ama(f(x), x)
+¬Animal(y) ∨ ¬Mata(x, y) ∨ ¬Ama(z, x)
+¬Animal(y) ∨ Ama(Jack, y)
+Mata(Jack, Tuna) ∨ Mata(Curiosidad, Tuna)
+¬Gato(x) ∨ Animal(x)
+Gato(Tuna)
