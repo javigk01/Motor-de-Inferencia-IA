@@ -147,74 +147,98 @@ def resolver_actual_con_base(actual: List[str], base: List[str]) -> Optional[Tup
                 return sorted(list(set(resolvente))), subst, literal_cancelado
     return None
 
-# ---------- algoritmo principal (cadena desde negación-meta) ----------
-def refutacion_cadena(base_clausulas: List[List[str]], meta: str, verbose: bool=True) -> bool:
+# ---------- algoritmo principal (resolución general - no lineal) ----------
+def refutacion_general(base_clausulas: List[List[str]], meta: str, verbose: bool=True) -> bool:
     """
+    Algoritmo de resolución general (no lineal).
+    Añade cada resolvente a la base de conocimiento y prueba todas las combinaciones.
     base_clausulas: lista de cláusulas (cada cláusula es lista de literales strings)
     meta: string con la meta, ejemplo "Odia(Marco,Cesar)"
     retorna True si demuestra la meta (llega a ⊥), False si no.
     """
-    # preparar
+    # preparar: agregar negación de la meta a la base
     kb = [list(c) for c in base_clausulas]
     neg_meta = f"¬{meta}" if not meta.startswith("¬") else meta[1:]
-    actual = [neg_meta]
+    kb.append([neg_meta])
+    
     vistos: Set[Tuple[str,...]] = set()
-    paso = 1
-
+    for c in kb:
+        vistos.add(clausula_to_key(c))
+    
     if verbose:
-        print("=== Resolución por refutación (cadena desde la negación-meta) ===\n")
-        print("Base de conocimiento:")
-        for i, c in enumerate(kb, 1):
+        print("=== Resolución por refutación (algoritmo general) ===\n")
+        print("Base de conocimiento inicial:")
+        for i, c in enumerate(kb[:-1], 1):
             print(f" {i}. {' ∨ '.join(c)}")
         print(f"\nMeta a probar: {meta}")
-        print(f"Negación-meta (inicial): {neg_meta}\n")
-        print("---------------------------------------------------------------")
-
-    # bucle: tomamos la cláusula 'actual' y la resolvemos contra las cláusulas de la KB en orden
+        print(f"Negación-meta agregada: {neg_meta}")
+        print(f" {len(kb)}. {' ∨ '.join(kb[-1])}")
+        print("\n---------------------------------------------------------------")
+    
+    paso = 1
+    nuevas_clausulas = []
+    
+    # Mientras haya cláusulas por resolver
     while True:
-        key_actual = clausula_to_key(actual)
-        if key_actual in vistos:
-            if verbose:
-                print(f"\n🔁 Clausula actual ya vista: {actual}. No hay avance posible -> NO demostrable.")
-            return False
-        vistos.add(key_actual)
-
         if verbose:
-            print(f"\n🧩 Etapa {paso}")
-            print(f" Cláusula actual: { ' ∨ '.join(actual) }")
-
-        progreso = False
-        # intentamos resolver con cada cláusula de la KB (en orden)
-        for idx, claus in enumerate(kb, start=1):
-            intento = resolver_actual_con_base(actual, claus)
-            if intento is None:
+            print(f"\n� Paso {paso}: Intentando resolver todas las combinaciones de cláusulas...")
+        
+        encontro_resolvente = False
+        
+        # Probar todas las combinaciones de pares de cláusulas
+        for i in range(len(kb)):
+            for j in range(i + 1, len(kb)):
+                claus1 = kb[i]
+                claus2 = kb[j]
+                
+                # Intentar resolver estas dos cláusulas
+                intento = resolver_actual_con_base(claus1, claus2)
+                if intento is None:
+                    continue
+                
+                resolvente, subst, literal_cancelado = intento
+                key_resolvente = clausula_to_key(resolvente)
+                
+                # Si ya vimos este resolvente, saltar
+                if key_resolvente in vistos:
+                    continue
+                
+                encontro_resolvente = True
+                
                 if verbose:
-                    print(f"  - No se puede resolver con KB[{idx}]: { ' ∨ '.join(claus) }")
-                continue
-            resolvente, subst, literal_cancelado = intento
+                    print(f"\n  ✨ Nueva resolución encontrada:")
+                    print(f"     Cláusula 1: {' ∨ '.join(claus1)}")
+                    print(f"     Cláusula 2: {' ∨ '.join(claus2)}")
+                    print(f"     Literales cancelados: {literal_cancelado}")
+                    if subst:
+                        print(f"     Sustitución: {subst}")
+                    print(f"     Resolvente: { ' ∨ '.join(resolvente) if resolvente else '⊥ (cláusula vacía)'}")
+                
+                # Si resolvente es vacía -> éxito
+                if not resolvente:
+                    if verbose:
+                        print("\n✅ Se alcanzó la cláusula vacía (⊥). Contradicción encontrada.")
+                        print(f"⇒ La meta {meta} se demuestra.")
+                    return True
+                
+                # Agregar el resolvente a la lista de nuevas cláusulas
+                nuevas_clausulas.append(resolvente)
+                vistos.add(key_resolvente)
+        
+        # Si no se encontraron nuevos resolventes, terminar
+        if not encontro_resolvente:
             if verbose:
-                print(f"  → Resuelto con KB[{idx}]: { ' ∨ '.join(claus) }")
-                print(f"    Literales cancelados: {literal_cancelado}")
-                if subst:
-                    print(f"    Sustitución: {subst}")
-                print(f"    Resultado (resolvente): { ' ∨ '.join(resolvente) if resolvente else '⊥ (cláusula vacía)'}")
-            # si resolvente es vacía -> éxito
-            if not resolvente:
-                if verbose:
-                    print("\n✅ Se alcanzó la cláusula vacía (⊥). Contradicción encontrada.")
-                    print(f"⇒ La meta {meta} se demuestra.")
-                return True
-            # si el resolvente es nuevo y no tautológico, lo tomamos como nueva 'actual' y continuamos la cadena
-            actual = resolvente
-            progreso = True
-            paso += 1
-            break  # importante: tomamos solo la primera resolución aplicable y continuamos la cadena
-
-        if not progreso:
-            if verbose:
-                print("\n⚠️ No se encontró ninguna cláusula de la KB con la que resolver la cláusula actual.")
-                print("⇒ No se pudo continuar la cadena desde la negación de la meta.")
+                print("\n⚠️ No se pueden generar más resolventes.")
+                print("⇒ No se puede demostrar la meta.")
             return False
+        
+        # Añadir todas las nuevas cláusulas a la base de conocimiento
+        if verbose:
+            print(f"\n  📝 Se agregaron {len(nuevas_clausulas)} nueva(s) cláusula(s) a la base de conocimiento.")
+        
+        kb.extend(nuevas_clausulas)
+        nuevas_clausulas = []
+        paso += 1
 
 # ---------- funciones para leer desde archivos ----------
 def leer_base_conocimientos(archivo: str) -> List[List[str]]:
@@ -323,6 +347,6 @@ if __name__ == "__main__":
     print(f"🎯 Meta a demostrar: {meta}")
     print("\n" + "="*60)
     
-    resultado = refutacion_cadena(base, meta, verbose=True)
+    resultado = refutacion_general(base, meta, verbose=True)
     print("\n" + "="*60)
     print("🏆 Resultado final:", "✅ SE PUEDE DEMOSTRAR" if resultado else "❌ NO SE PUEDE DEMOSTRAR")
