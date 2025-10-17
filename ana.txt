@@ -1,0 +1,6 @@
+# Base de conocimientos - Ejemplo Ana/Juan
+¬Ama(x, y) ∨ Ama(y, x)
+¬Odia(y, z) ∨ ¬Ama(x, y)
+Odia(x, f(x))
+Odia(x, Ana) ∨ Ama(Ana, x)
+Odia(Juan, a) ∧ Ama(a, Ana)

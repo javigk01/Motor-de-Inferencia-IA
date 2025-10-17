@@ -1,0 +1,4 @@
+# Base de conocimientos - Ejemplo amor reciproco
+¬Ama(x, y) ∨ ¬Ama(y, x)
+Ama(Ana, Juan)
+¬Ama(Juan, Ana)
